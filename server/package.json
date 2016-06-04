@@ -1,0 +1,16 @@
+{
+  "name": "syncurity",
+  "version": "1.0.0",
+  "description": "connect to protect",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "fs": "0.0.2",
+    "mqtt": "^1.11.0"
+  }
+}
