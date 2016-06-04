@@ -14,8 +14,8 @@ var username = 'use-token-auth';
 var password = "47@*BY8!CrMmM_3)2o";
 
 var path = '../curtischong.jpg';
-var testImage = base64_encode(path);
-
+//var testImage = base64_encode(path);
+//console.log(testImage);
 
 // function to encode file data to base64 encoded string
 function base64_encode(file) {
