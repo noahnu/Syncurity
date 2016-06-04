@@ -1,51 +1,49 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-var app = {
-    // Application Constructor
-    initialize: function() {
-        this.bindEvents();
-    },
-    // Bind Event Listeners
-    //
-    // Bind any events that are required on startup. Common events are:
-    // 'load', 'deviceready', 'offline', and 'online'.
-    bindEvents: function() {
-        document.addEventListener('deviceready', this.onDeviceReady, false);
-    },
-    // deviceready Event Handler
-    //
-    // The scope of 'this' is the event. In order to call the 'receivedEvent'
-    // function, we must explicitly call 'app.receivedEvent(...);'
-    onDeviceReady: function() {
-        app.receivedEvent('deviceready');
-    },
-    // Update DOM on a Received Event
-    receivedEvent: function(id) {
-        var parentElement = document.getElementById(id);
-        var listeningElement = parentElement.querySelector('.listening');
-        var receivedElement = parentElement.querySelector('.received');
+	Syncurity Camera App
+*/
+"use strict";
 
-        listeningElement.setAttribute('style', 'display:none;');
-        receivedElement.setAttribute('style', 'display:block;');
-
-        console.log('Received Event: ' + id);
-    }
+var dom = {
+	status: null,
+	image: null
 };
 
-app.initialize();
+var core = {
+	init: function() {
+		core.bindDom();
+		setTimeout(video.start(), 500);
+	},
+	
+	bindDom: function() {
+		dom.status = document.getElementById('status');
+		dom.image = document.getElementById('preview');
+	},
+	
+	status: function(msg) {
+		dom.status.innerHTML = msg;
+	},
+	
+	image: function(url) {
+		dom.image.src = url;
+	}
+};
+
+var video = {
+	start: function() {
+		core.status("Video starting...");
+		
+		navigator.device.capture.captureImage(video.captured, video.failed, { limit: 1 });
+	},
+	
+	captured: function(media) {
+		if (media.length > 0) {
+			core.image(media[0].fullPath);
+		}
+	},
+	
+	failed: function(err) {
+		console.log(err);
+	}
+};
+
+document.addEventListener('deviceready', core.init, false);
