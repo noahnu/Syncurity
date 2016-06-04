@@ -10,28 +10,34 @@
             * Disables use of inline scripts in order to mitigate risk of XSS vulnerabilities. To change this:
                 * Enable inline JS: add 'unsafe-inline' to default-src
         -->
-        <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: gap: https://ssl.gstatic.com 'unsafe-eval'; style-src 'self' 'unsafe-inline'; media-src *">
+      <!--  <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: gap: https://ssl.gstatic.com 'unsafe-eval'; style-src 'self' 'unsafe-inline'; media-src *">-->
         <meta name="format-detection" content="telephone=no">
         <meta name="msapplication-tap-highlight" content="no">
         <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width">
         <link rel="stylesheet" type="text/css" href="css/index.css">
         <title>Syncurity</title>
+        
+        <script src="jquery-1.12.4.min.js"></script>
     </head>
     <body>
         <div class="app">
-            <h1>Syncurity</h1>
-            <div id="deviceready" class="blink">
+            <h1 class="h1-title">Syncur.io</h1>
+         <!--   <div id="deviceready" class="blink">
                 <p id='status' class="event listening">Connecting to Device</p>
-            </div>
-			<p>hi</p>
+            </div>-->
 			<img id='preview' src='' /><!--this div will be updated every 5 seconds as it sends requests to the server-->
             <p id="desc"></p>
             <div class="container">
-                <button class="alertBtn" style="background-color: black;">Grant Access</button>
-                <button class="alertBtn" style="background-color: green;">Deny + Flag</button>
-                <button class="alertBtn" style="background-color: red;">Deny + Alarm</button>
+                <button id="grantAcc" class="alertBtn">Grant Access</button>
             </div>
-            
+            <div class="container">
+                <button id="denyAcc" class="alertBtn">Deny + Flag</button>
+                <button id="denyAlarm" class="alertBtn">Deny + Alarm</button>
+            </div>
+            <div class="confirm-cancel-div" style="top: 20px;">
+                <button id="confirm" class="confirm-cancel-btn" style="display: none;">Confirm</button>
+                <button id="cancel" class="confirm-cancel-btn" style="display: none;">Cancel</button>
+            </div>
         </div>
         <script type="text/javascript" src="cordova.js"></script>
         <script type="text/javascript" src="js/index.js"></script>
