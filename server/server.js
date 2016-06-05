@@ -1,8 +1,9 @@
 "use strict";
 
-var mqtt = require('mqtt');
 var fs = require('fs');
 var xml = require('xmlhttprequest');
+
+
 
 var watson = require('watson-developer-cloud');
 var visual_recognition = watson.visual_recognition({
@@ -11,74 +12,68 @@ var visual_recognition = watson.visual_recognition({
 	version: 'v3'
 });
 
-var bluemix = {
-	client: undefined,
-	
-	publish: {
-		ping: "iot-2/evt/pingFrom/fmt/json"
-	},
-	
-	subscribe: {
-		ping: "iot-2/cmd/pingTo/fmt/json"
-	},
-	
-	opts: {
-		org: "ziwbp7",
-		type: "computer",
-		deviceId: "123456789",
-		username: 'use-token-auth',
-		password: "47@*BY8!CrMmM_3)2o",
-		clientId: ""
-	},
-	
-	getUrl: () => {
-		return "mqtts://" + bluemix.opts.org + ".messaging.internetofthings.ibmcloud.com:8883";
-	},
-	
-	events: {
-		connected: () => {
-			console.log("Connected to bluemix.");
-			
-			bluemix.client.subscribe(bluemix.subscribe.ping, () => {
-				bluemix.client.on('message', (topic, message, packet) => {
-					console.log("Received '" + message + "' on '" + topic + "'");
-				});
-			});
-			
-			core.classify(fs.createReadStream('curtischong.jpg'));
-			
-			//bluemix.client.publish(bluemix.publish.ping, JSON.stringify(msg));
-		}	
-	}
-};
-
 var core = {
-	init: () => {
-		bluemix.opts.clientId = "d:" + bluemix.opts.org + ":" + bluemix.opts.type + ":" + bluemix.opts.deviceId;
-		
+	init: () => {		
 		console.log("Syncur.io starting...");
 		
-		bluemix.client = mqtt.connect(bluemix.getUrl(), {
-			clientId: bluemix.opts.clientId,
-			keepalive: 120,
-			username: bluemix.opts.username,
-			password: bluemix.opts.password
-		});
-		
-		bluemix.client.on('connect', bluemix.events.connected);
+		core.classify(fs.createReadStream('curtischong.jpg'));
 	},
 	
-	classify: (stream) => {
+	classify: (stream, onFriend, onFoe, onError) => {
 		visual_recognition.classify({
 			images_file: stream
 		}, function(err, res){
 			if (err) {
 				console.log('Failed to communicate with API: ');
 				console.log(err);
-			} else {
-				console.log(JSON.stringify(res, null, 2));
+				
+				lazy.call(onError, err);
+			} else if (res.images && res.images.length > 0) {
+				var classifiers = res.images[0].classifiers || [];
+				if (classifiers.length > 0) {
+					if (core.recog.search(classifiers, 'default', 'person') > 0.5) {
+						if (core.recog.search(classifiers, 'friend', 'id-*') > 0.5) {
+							console.log("An friendly person identified.");
+							lazy.call(onFriend);
+						} else {
+							console.log("An unrecognized person identified!");
+							lazy.call(onFoe);
+						}
+						return;
+					}
+				}
 			}
+			
+			/* Nothing detected in the image? */
+			console.log("No threat detected.");
 		});
+	},
+	
+	recog: {
+		/* Return score of found class, classifier pair. */
+		search: (classifiers, classifier, iclass) => {
+			for(let i = 0; i < classifiers.length; i++){
+				if (classifiers[i].name != classifier) continue;
+				for (let j = 0; j < classifiers[i].classes.length; j++) {
+					if (!core.recog.match(classifiers[i].classes[j].class, iclass)) continue;
+					return classifiers[i].classes[j].score;
+				}
+			}
+		},
+		
+		/* Basic string matching with trailing wildcards. */
+		match: (haystack, needle) => {
+			return ((needle.endsWith('*') &&
+					haystack.startsWith(needle.substring(0, needle.indexOf('*')))) ||
+				haystack == needle);
+		}
+	}
+};
+
+/* lazy.call(this, ...params) will call function iff defined. */
+var lazy = (...params) => {
+	if (typeof this === 'function') {
+		this(params);
 	}
 };
 
