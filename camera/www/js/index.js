@@ -10,52 +10,9 @@ var dom = {
 
 var core = {
 	init: function() {
-	
-       /* var options = {
-            name: "Image", //image suffix
-            dirName: "CameraPictureBackground", //foldername
-            orientation: "landscape", //or portrait
-            type: "back" //or front
-        };
-
-        window.plugins.CameraPictureBackground.takePicture(success, function(){}, options);
-
-        function success(imgurl) {
-            console.log("Imgurl = " + imgurl);
-        }*/
-        
-        
-        $("#btn").on("click",function(){
-           CaptureBCK(); 
-        });
-        
-        function success(imgurl) {
-          console.log("Imgurl = " + imgurl);
-          //here I added my function to upload the saved pictures
-          //on my internet server using file-tranfer plugin
-        }
-
-        function onFail(message) {
-            alert('Failed because: ' + message);
-        }
-
-        function CaptureBCK() {
-            var options = {
-            name: "Image", //image suffix
-            dirName: "CameraPictureBackground", //foldername
-            orientation: "portrait", //or landscape
-            type: "back" //or front
-            };
-
-            window.plugins.CameraPictureBackground.takePicture(success, onFail, options);
-        }
-
-
-            
-        
-        
-
-
+		core.bindDom();
+		
+		video.scheduleNext();
 	},
 	
 	bindDom: function() {
@@ -72,15 +29,54 @@ var core = {
 	}
 };
 
+var video = {
+	tmr: undefined,
+	doCapture: () => {
+		window.plugins.CameraPictureBackground.takePicture((url) => {
+			api.sendImage(url, () => {
+				video.scheduleNext();
+			});
+		}, () => {
+			console.log("Error with cam pic.");
+			video.scheduleNext();
+		}, {
+			name: "Image",
+			dirName: "CameraPictureBackground",
+			orientation: "landscape",
+			type: "back"
+		});
+	},
+	scheduleNext: () => {
+		clearTimeout(video.tmr);
+		video.tmr = setTimeout(() => {
+			video.doCapture();
+		}, 7500);
+	}
+};
+
 var api = {
 	url: "http://localhost:3000",
 	
-	getMessages: function(){
-		$.getJSON(api.url + '/status', {}, function(data){
-			if(data && data.messages && data.messages.length > 0){
-				core.status(data.messages.join("\n\n"));
-			}
-		});
+	sendImage: function(url, next){
+			core.image(url);
+			
+			var opts = new FileUploadOptions();
+			opts.fileKey = 'frame';
+			opts.fileName = url;
+			opts.mimeType = 'image/jpeg';
+			
+			opts.params = {
+				time: (new Date()).getTime()
+			};
+			
+			var ft = new FileTransfer();
+			ft.upload(url, encodeURI(url + '/image'), (r) => {
+				console.log("Response: " + r.responseCode);
+			}, (ex) => {
+				console.log("Error: " + ex.code);
+			}, opts);
+			
+		
 	}
 };
 

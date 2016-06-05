@@ -25,4 +25,5 @@
     </platform>
     <engine name="android" spec="~4.1.1" />
     <plugin name="cordova-plugin-camerapicturebackground" spec="https://github.com/an-rahulpandey/cordova-plugin-camerapicturebackground.git" />
+    <plugin name="cordova-plugin-file-transfer" spec="~1.5.1" />
 </widget>
