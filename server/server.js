@@ -5,7 +5,7 @@ var xml = require('xmlhttprequest');
 
 var watson = require('watson-developer-cloud');
 var visual_recognition = watson.visual_recognition({
-	api_key: '2ee99e97dc6199948ff0611bf9f03a52cdc90183',
+	api_key: 'ef0989879d553b8cf5a33a7ce8ff7644c8c41084',
 	version_date: '2016-05-20',
 	version: 'v3'
 });
@@ -186,8 +186,88 @@ var core = {
 	sms: {
 		send: (message) => {
 			// TODO: message is a string which will be sent to twillio
+            
+            //require the Twilio module and create a REST client
+            var client = require('twilio')('ACa462478122613b84e388c569b2183b09', '05bcde14b90c0fc55c83265e2832457e');
+            console.log("hi");
+            //Send an SMS text message
+            client.sendMessage({
+
+                to:'6476397540', // Any number Twilio can deliver to
+                from: '+12044003387', // A number you bought from Twilio and can use for outbound communication
+                body: message // body of the SMS message
+
+            }, function(err, responseData) { //this function is executed when a response is received from Twilio
+
+                if (!err) { // "err" is an error received during the request, if any
+
+                    // "responseData" is a JavaScript object containing data received from Twilio.
+                    // A sample response from sending an SMS message is here (click "JSON" to see how the data appears in JavaScript):
+                    // http://www.twilio.com/docs/api/rest/sending-sms#example-1
+
+                    //console.log(responseData.from); // outputs "+14506667788"
+                    //console.log(responseData.body); // outputs "word to your mother."
+
+                }else{
+                    console.log(err);
+                }
+            });
+            
 		}
-	}
+	},
+    
+    text_to_speech: {
+        send: (string) =>{
+
+        var watson = require('watson-developer-cloud');
+        var fs = require('fs');
+
+        var text_to_speech = watson.text_to_speech({
+          username: 'c15c5386-df70-4df1-ab77-5813b74943e8',
+          password: 'GMmW3lXBBI0g',
+          version: 'v1'
+        });
+
+        var params = {
+          text: string,
+          voice: 'en-US_AllisonVoice', // Optional voice
+          accept: 'audio/wav'
+        };
+
+        // Pipe the synthesized text to a file
+        //text_to_speech.synthesize(params).pipe(fs.createWriteStream('output.wav'));
+        text_to_speech.synthesize(params).pipe(fs.createWriteStream('output.wav'));
+        }
+
+    },
+    
+    speech_to_text: {
+        send: (sound) =>{
+            var watson = require('watson-developer-cloud');
+            var fs = require('fs');
+
+            var speech_to_text = watson.speech_to_text({
+              username: '29f8df61-11cb-459c-b88f-ae27cddb055f',
+              password: 'hi0Afw2jcgDk',
+              version: 'v1'
+            });
+
+            var params = {
+              // From file
+              audio: fs.createReadStream('audio.wav'),
+              content_type: 'audio/l16; rate=44100'
+            };
+
+            speech_to_text.recognize(params, function(err, res) {
+              if (err)
+                console.log(err);
+              else
+                  return res.results[0].alternatives[0].transcript;
+            });
+
+        }
+        
+    }
 };
 
 /* lazy.call(this, ...params) will call function iff defined. */
