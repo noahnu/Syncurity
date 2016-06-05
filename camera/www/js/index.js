@@ -25,7 +25,9 @@ var core = {
         }*/
         
         
-        
+        $("#btn").on("click",function(){
+           CaptureBCK(); 
+        });
         
         function success(imgurl) {
           console.log("Imgurl = " + imgurl);
