@@ -73,12 +73,31 @@ var api = {
 				var ft = new FileTransfer();
 				ft.upload(u, encodeURI(api.url + '/image'), (r) => {
 					console.log("Response: " + r.responseCode);
+					if (r.response == 'Alarm') {
+						alarm.play();
+					} else {
+						console.log("R: " + JSON.stringify(r));
+					}
 					next();
 				}, (ex) => {
 					console.log("Error: " + ex.code);
 					next();
 				}, opts);
 			});		
+	}
+};
+
+var alarm = {
+	sound: undefined,
+	play: () => {
+		if (!alarm.sound) {
+			alarm.sound = new Audio('Alarm.mp3');
+			alarm.sound.loop = false;
+		} else {
+			alarm.sound.stop();
+		}
+		
+		alarm.sound.play();
 	}
 };
 

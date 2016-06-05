@@ -18,6 +18,10 @@ var core = {
 	bindDom: function() {
 		dom.$status = $('#status');
 		dom.$image = $('#preview');
+		
+		$("#denyAlarm").on("click",function(){
+			api.signalAlarm();
+		});
 	},
 	
 	status: function(msg) {
@@ -31,6 +35,10 @@ var core = {
 
 var api = {
 	url: "http://192.168.4.144:3000",
+	
+	signalAlarm: function(){
+		$.get(api.url + '/alert', {}, function(d){});
+	},
 	
 	getMessages: function(){
 		$.getJSON(api.url + '/status', {}, function(data){
@@ -55,5 +63,7 @@ var api = {
 		}, 4000);
 	}
 };
+
+
 
 document.addEventListener('deviceready', core.init, false);

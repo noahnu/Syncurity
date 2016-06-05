@@ -36,6 +36,9 @@ var core = {
 	/* File path to last foe. */
 	lastFoePath: "",
 	
+	/* If true, send msg to camera to sound alarm. */
+	soundAlarm: false,
+	
 	http: {
 		listening: () => {
 			console.log("Now listening on port: " + PORT);
@@ -68,6 +71,19 @@ var core = {
 				}
 			});
 			
+			/* Controller app sounds the alarm! */
+			httpServer.get('/alert', (req, res, next) => {
+				res.header('Access-Control-Allow-Origin', '*');
+				res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+				res.header('Access-Control-Allow-Headers', 'Content-Type');
+
+				core.soundAlarm = true;
+				console.log("Alarm sounded.");
+				
+				res.send("OK");
+			});
+			
+			
 			/* Camera sends image via /image route. */
 			httpServer.post('/image', upload.single('frame'), (req, res, next) => {
 				res.header('Access-Control-Allow-Origin', '*');
@@ -79,7 +95,12 @@ var core = {
 				/*var timeCaptured = req.body.time;
 				var deviceLocation = req.body.location;*/
 				
-				res.send("OK");
+				if (core.soundAlarm) {
+					core.soundAlarm = false;
+					res.send("Alarm");
+				} else {
+					res.send("OK");
+				}
 				
                 // lower photo resolution
 				jimp.read(req.file.path, (err, img) => {
