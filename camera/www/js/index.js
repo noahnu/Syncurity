@@ -73,8 +73,10 @@ var api = {
 				var ft = new FileTransfer();
 				ft.upload(u, encodeURI(api.url + '/image'), (r) => {
 					console.log("Response: " + r.responseCode);
+					next();
 				}, (ex) => {
 					console.log("Error: " + ex.code);
+					next();
 				}, opts);
 			});		
 	}

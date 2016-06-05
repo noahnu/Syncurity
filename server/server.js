@@ -2,7 +2,8 @@
 
 var fs = require('fs');
 var xml = require('xmlhttprequest');
-var sharp = require('sharp');
+
+var jimp = require('jimp');
 
 var watson = require('watson-developer-cloud');
 var visual_recognition = watson.visual_recognition({
@@ -27,12 +28,13 @@ var core = {
 		
 		core.http.initRoutes();
 		httpServer.listen(PORT, core.http.listening);
-		
-		core.classify('matt2.jpg');
 	},
 	
 	/* Messages to send to user. */
 	messages: [],
+	
+	/* File path to last foe. */
+	lastFoePath: "",
 	
 	http: {
 		listening: () => {
@@ -53,6 +55,19 @@ var core = {
 				next();
 			});
 			
+			/* Test to see if server is working. */
+			httpServer.get('/preview', (req, res, next) => {
+				res.header('Access-Control-Allow-Origin', '*');
+				res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+				res.header('Access-Control-Allow-Headers', 'Content-Type');
+
+				if (core.lastFoePath.length > 0){
+					res.sendFile(core.lastFoePath, {root : __dirname});
+				} else {
+					next();
+				}
+			});
+			
 			/* Camera sends image via /image route. */
 			httpServer.post('/image', upload.single('frame'), (req, res, next) => {
 				res.header('Access-Control-Allow-Origin', '*');
@@ -64,23 +79,33 @@ var core = {
 				/*var timeCaptured = req.body.time;
 				var deviceLocation = req.body.location;*/
 				
-                //lower photo resolution
-                sharp(req.file.path).resize(500, 500).max().toFile("temp-"+req.file.path, (err) => {
-                    // queue the file if currently waiting for watson
-                    core.classify("temp-"+req.file.path, () => {
-                        // Friend
-                    }, () => {
-                        // Foe
-                        core.messages.push("An intruder has been detected!");
-                        core.sms.send("An intruder has been detected!");
-                    }, () => {
-                        // Error (errors are not our friends)
-                    });                  
-                });                
-                
+				res.send("OK");
 				
+                // lower photo resolution
+				jimp.read(req.file.path, (err, img) => {
+					if (err) { /*next();*/ return; };
+					img.scaleToFit(500, 500).write(req.file.path + '.jpg', function(){
+						try {
+							fs.unlink(req.file.path);
+						} catch (e){}
+						
+						// queue the file if currently waiting for watson
+						core.classify(req.file.path + '.jpg', () => {
+							// Friend
+							console.log("classify: friend");
+						}, () => {
+							// Foe
+							console.log("classify: foe");
+							core.messages.push("An intruder has been detected!");
+							core.sms.send("An intruder has been detected!");
+						}, () => {
+							console.log("classify: error");
+							// Error (errors are not our friends)
+						}); 
+					});
+				});				
 				
-				next();
+				//next();
 			});
 			
 			/* User (front-end) polls for intruder alerts. */
@@ -116,12 +141,13 @@ var core = {
 		visual_recognition.classify({
 			images_file: fs.createReadStream(filePath),
 			classifier_ids: ['default', 'id1_1175529260', 'id2_1728253810']
-		}, function(err, res){
+		}, function(err, res){			
 			if (err) {
 				console.log('Failed to communicate with API: ');
 				console.log(err);
 				
-				core.recog.afterClassify(() => {lazy.call(onError, err)});
+				onError(err);
+				core.recog.afterClassify(filePath);
 			} else if (res.images && res.images.length > 0) {
 				//console.log(JSON.stringify(res, null, 2));
 				var classifiers = res.images[0].classifiers || [];
@@ -130,13 +156,17 @@ var core = {
 						var score;
 						if ((score = core.recog.search(classifiers, 'id-*', 'friend')) > 0.45) {
 							console.log("A friendly person identified with score: "+score+".");
-							core.recog.afterClassify(() => {lazy.call(onFriend, err)});
+							
+							core.recog.lastWasFoe = false;
+							
+							onFriend();
+							core.recog.afterClassify(filePath);
 						} else {
 							console.log("An unrecognized person identified!");
 							
 							if ((new Date).getTime() - core.recog.lastFoeTime < 120000) {
 								console.log("Too close to last foe. Ignoring.");
-								core.recog.afterClassify();
+								core.recog.afterClassify(filePath);
 								return;
 							}
 							
@@ -144,22 +174,25 @@ var core = {
 							
 							if (core.recog.lastWasFoe) {
 								console.log("Last was foe. Ignoring.");
-								core.recog.afterClassify();
+								core.recog.afterClassify(filePath);
 								return;
 							}
 							
 							core.recog.lastWasFoe = true;
 							
-							core.recog.afterClassify(() => {lazy.call(onFoe, err)});
+							onFoe();
+							core.recog.afterClassify(filePath);
 						}
 						return;
 					}
 				}
 			}
 			
+			core.recog.lastWasFoe = false;
+			
 			/* Nothing detected in the image? */
 			console.log("No threat detected.");
-			core.recog.afterClassify();
+			core.recog.afterClassify(filePath);
 		});
 	},
 	
@@ -186,9 +219,16 @@ var core = {
 		/*
 			Executes after classify, before callback. Regardless of callback.
 		*/
-		afterClassify: (callback) => {
-			if (typeof callback === 'function') callback();
-			
+		afterClassify: (filePath) => {
+			if (!core.recog.lastWasFoe) {
+				/* Delete picture. */
+				try {
+					fs.unlink(filePath);
+				} catch (e){}
+			} else {
+				core.lastFoePath = filePath;
+			}
+		
 			if (core.recog.queue.length > 0) {
 				setTimeout(() => {
 					core.classify.apply(this, core.recog.queue.pop());
@@ -227,13 +267,6 @@ var core = {
                 if (err) console.log(err);
             });
 		}
-	}
-};
-
-/* lazy.call(this, ...params) will call function iff defined. */
-var lazy = (...params) => {
-	if (typeof this === 'function') {
-		this(params);
 	}
 };
 

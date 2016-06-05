@@ -12,8 +12,7 @@ var core = {
 	init: function() {
 		core.bindDom();
 		
-		//
-		$('#grantAcc').click(api.getMessages);
+		api.scheduleNext();
 	},
 	
 	bindDom: function() {
@@ -31,14 +30,29 @@ var core = {
 };
 
 var api = {
-	url: "http://localhost:3000",
+	url: "http://192.168.4.144:3000",
 	
 	getMessages: function(){
 		$.getJSON(api.url + '/status', {}, function(data){
-			if(data && data.messages && data.messages.length > 0){
-				core.status(data.messages.join("\n\n"));
+			if(data && data.message && data.message.length > 0){
+				core.status("Alert: " + data.message.join("\n\n"));
+				if (data.message.join(' ').indexOf('intruder') > 0) {
+					try {
+						core.image(api.url + '/preview?time=' + (new Date()).getTime());
+					} catch (e) {}
+				}
 			}
+			
+			api.scheduleNext();
 		});
+	},
+	
+	tmr: undefined,
+	scheduleNext: () => {
+		clearTimeout(api.tmr);
+		api.tmr = setTimeout(() => {
+			api.getMessages();
+		}, 4000);
 	}
 };
 
