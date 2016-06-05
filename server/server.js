@@ -16,6 +16,8 @@ var httpServer = express();
 var multer = require('multer');
 var upload = multer({ dest: 'uploads/' });
 
+var twillioClient = require('twilio')('ACa462478122613b84e388c569b2183b09', '05bcde14b90c0fc55c83265e2832457e');
+
 var PORT = 3000;
 
 var core = {
@@ -25,7 +27,7 @@ var core = {
 		core.http.initRoutes();
 		httpServer.listen(PORT, core.http.listening);
 		
-		core.classify('curtischong.jpg');
+		core.classify('matt.jpg');
 	},
 	
 	/* Messages to send to user. */
@@ -83,7 +85,8 @@ var core = {
 		core.recog.isPonderingLife = true;
 		
 		visual_recognition.classify({
-			images_file: fs.createReadStream(filePath)
+			images_file: fs.createReadStream(filePath),
+			classifier_ids: ['default', 'id1_1175529260']
 		}, function(err, res){
 			if (err) {
 				console.log('Failed to communicate with API: ');
@@ -91,11 +94,12 @@ var core = {
 				
 				core.recog.afterClassify(() => {lazy.call(onError, err)});
 			} else if (res.images && res.images.length > 0) {
+				console.log(JSON.stringify(res, null, 2));
 				var classifiers = res.images[0].classifiers || [];
 				if (classifiers.length > 0) {
 					if (core.recog.search(classifiers, 'default', 'person') > 0.5) {
-						if (core.recog.search(classifiers, 'friend', 'id-*') > 0.5) {
-							console.log("An friendly person identified.");
+						if (core.recog.search(classifiers, 'id-*', 'friend') > 0.5) {
+							console.log("A friendly person identified.");
 							core.recog.afterClassify(() => {lazy.call(onFriend, err)});
 						} else {
 							console.log("An unrecognized person identified!");
@@ -153,7 +157,7 @@ var core = {
 			Executes after classify, before callback. Regardless of callback.
 		*/
 		afterClassify: (callback) => {
-			callback();
+			if (typeof callback === 'function') callback();
 			
 			if (core.recog.queue.length > 0) {
 				setTimeout(() => {
@@ -167,7 +171,7 @@ var core = {
 		/* Return score of found class, classifier pair. */
 		search: (classifiers, classifier, iclass) => {
 			for(let i = 0; i < classifiers.length; i++){
-				if (classifiers[i].name != classifier) continue;
+				if (!core.recog.match(classifiers[i].name, classifier)) continue;
 				for (let j = 0; j < classifiers[i].classes.length; j++) {
 					if (!core.recog.match(classifiers[i].classes[j].class, iclass)) continue;
 					return classifiers[i].classes[j].score;
@@ -185,89 +189,15 @@ var core = {
 	
 	sms: {
 		send: (message) => {
-			// TODO: message is a string which will be sent to twillio
-            
-            //require the Twilio module and create a REST client
-            var client = require('twilio')('ACa462478122613b84e388c569b2183b09', '05bcde14b90c0fc55c83265e2832457e');
-            console.log("hi");
-            //Send an SMS text message
-            client.sendMessage({
-
-                to:'6476397540', // Any number Twilio can deliver to
-                from: '+12044003387', // A number you bought from Twilio and can use for outbound communication
-                body: message // body of the SMS message
-
-            }, function(err, responseData) { //this function is executed when a response is received from Twilio
-
-                if (!err) { // "err" is an error received during the request, if any
-
-                    // "responseData" is a JavaScript object containing data received from Twilio.
-                    // A sample response from sending an SMS message is here (click "JSON" to see how the data appears in JavaScript):
-                    // http://www.twilio.com/docs/api/rest/sending-sms#example-1
-
-                    //console.log(responseData.from); // outputs "+14506667788"
-                    //console.log(responseData.body); // outputs "word to your mother."
-
-                }else{
-                    console.log(err);
-                }
+            twillioClient.sendMessage({
+                to: '6476397540',
+                from: '+12044003387',
+                body: message
+            }, (err, responseData) => {
+                if (err) console.log(err);
             });
-            
 		}
-	},
-    
-    text_to_speech: {
-        send: (string) =>{
-
-        var watson = require('watson-developer-cloud');
-        var fs = require('fs');
-
-        var text_to_speech = watson.text_to_speech({
-          username: 'c15c5386-df70-4df1-ab77-5813b74943e8',
-          password: 'GMmW3lXBBI0g',
-          version: 'v1'
-        });
-
-        var params = {
-          text: string,
-          voice: 'en-US_AllisonVoice', // Optional voice
-          accept: 'audio/wav'
-        };
-
-        // Pipe the synthesized text to a file
-        //text_to_speech.synthesize(params).pipe(fs.createWriteStream('output.wav'));
-        text_to_speech.synthesize(params).pipe(fs.createWriteStream('output.wav'));
-        }
-
-    },
-    
-    speech_to_text: {
-        send: (sound) =>{
-            var watson = require('watson-developer-cloud');
-            var fs = require('fs');
-
-            var speech_to_text = watson.speech_to_text({
-              username: '29f8df61-11cb-459c-b88f-ae27cddb055f',
-              password: 'hi0Afw2jcgDk',
-              version: 'v1'
-            });
-
-            var params = {
-              // From file
-              audio: fs.createReadStream('audio.wav'),
-              content_type: 'audio/l16; rate=44100'
-            };
-
-            speech_to_text.recognize(params, function(err, res) {
-              if (err)
-                console.log(err);
-              else
-                  return res.results[0].alternatives[0].transcript;
-            });
-
-        }
-        
-    }
+	}
 };
 
 /* lazy.call(this, ...params) will call function iff defined. */
