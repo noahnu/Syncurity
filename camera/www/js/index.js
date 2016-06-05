@@ -55,28 +55,28 @@ var video = {
 };
 
 var api = {
-	url: "http://localhost:3000",
+	url: "http://192.168.4.144:3000",
 	
-	sendImage: function(url, next){
-			core.image(url);
+	sendImage: function(u, next){
+			core.image(u);
 			
-			var opts = new FileUploadOptions();
-			opts.fileKey = 'frame';
-			opts.fileName = url;
-			opts.mimeType = 'image/jpeg';
-			
-			opts.params = {
-				time: (new Date()).getTime()
-			};
-			
-			var ft = new FileTransfer();
-			ft.upload(url, encodeURI(url + '/image'), (r) => {
-				console.log("Response: " + r.responseCode);
-			}, (ex) => {
-				console.log("Error: " + ex.code);
-			}, opts);
-			
-		
+			window.requestFileSystem(LocalFileSystem.PERSISTENT, 0, function(fileSystem){
+				var opts = new FileUploadOptions();
+				opts.fileKey = 'frame';
+				opts.fileName = fileSystem.root.fullPath + '/' + u;
+				opts.mimeType = 'image/jpeg';
+				
+				opts.params = {
+					time: (new Date()).getTime()
+				};
+				
+				var ft = new FileTransfer();
+				ft.upload(u, encodeURI(api.url + '/image'), (r) => {
+					console.log("Response: " + r.responseCode);
+				}, (ex) => {
+					console.log("Error: " + ex.code);
+				}, opts);
+			});		
 	}
 };
 
