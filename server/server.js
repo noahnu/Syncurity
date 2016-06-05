@@ -2,6 +2,7 @@
 
 var fs = require('fs');
 var xml = require('xmlhttprequest');
+var sharp = require('sharp');
 
 var watson = require('watson-developer-cloud');
 var visual_recognition = watson.visual_recognition({
@@ -63,16 +64,21 @@ var core = {
 				/*var timeCaptured = req.body.time;
 				var deviceLocation = req.body.location;*/
 				
-				// queue the file if currently waiting for watson
-				core.classify(req.file.path, () => {
-					// Friend
-				}, () => {
-					// Foe
-					core.messages.push("An intruder has been detected!");
-					core.sms.send("An intruder has been detected!");
-				}, () => {
-					// Error (errors are not our friends)
-				});
+                //lower photo resolution
+                sharp(req.file.path).resize(500, 500).max().toFile("temp-"+req.file.path, (err) => {
+                    // queue the file if currently waiting for watson
+                    core.classify("temp-"+req.file.path, () => {
+                        // Friend
+                    }, () => {
+                        // Foe
+                        core.messages.push("An intruder has been detected!");
+                        core.sms.send("An intruder has been detected!");
+                    }, () => {
+                        // Error (errors are not our friends)
+                    });                  
+                });                
+                
+				
 				
 				next();
 			});
