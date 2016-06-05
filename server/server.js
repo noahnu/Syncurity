@@ -27,7 +27,7 @@ var core = {
 		core.http.initRoutes();
 		httpServer.listen(PORT, core.http.listening);
 		
-		core.classify('matt.jpg');
+		core.classify('matt2.jpg');
 	},
 	
 	/* Messages to send to user. */
@@ -41,12 +41,23 @@ var core = {
 		initRoutes: () => {
 			
 			/* Test to see if server is working. */
-			httpServer.get('/test', (req, res) => {
-				res.send("Alive and well!");
+			httpServer.get('/test', (req, res, next) => {
+				res.header('Access-Control-Allow-Origin', '*');
+				res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+				res.header('Access-Control-Allow-Headers', 'Content-Type');
+
+				res.setHeader('Content-type', 'application/json');
+				res.send(JSON.stringify({ message: "Alive and well!" }));
+				
+				next();
 			});
 			
 			/* Camera sends image via /image route. */
 			httpServer.post('/image', upload.single('frame'), (req, res, next) => {
+				res.header('Access-Control-Allow-Origin', '*');
+				res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+				res.header('Access-Control-Allow-Headers', 'Content-Type');
+				
 				//req.body?
 				
 				/*var timeCaptured = req.body.time;
@@ -63,14 +74,26 @@ var core = {
 					// Error (errors are not our friends)
 				});
 				
+				next();
 			});
 			
 			/* User (front-end) polls for intruder alerts. */
-			httpServer.get('/status', (req, res) => {
+			httpServer.get('/status', (req, res, next) => {
+				res.header('Access-Control-Allow-Origin', '*');
+				res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+				res.header('Access-Control-Allow-Headers', 'Content-Type');
+				
 				// Flush alerts queue (containing messages).
+				var msgs = [];
+				
 				while (core.messages.length > 0) {
-					res.send(core.messages.pop());
+					msgs.push(core.messages.pop());
 				}
+				
+				res.setHeader('Content-type', 'application/json');
+				res.send(JSON.stringify({ time: (new Date()).getTime(), message: msgs }));
+				
+				next();
 			});
 			
 		}
@@ -86,7 +109,7 @@ var core = {
 		
 		visual_recognition.classify({
 			images_file: fs.createReadStream(filePath),
-			classifier_ids: ['default', 'id1_1175529260']
+			classifier_ids: ['default', 'id1_1175529260', 'id2_1728253810']
 		}, function(err, res){
 			if (err) {
 				console.log('Failed to communicate with API: ');
@@ -94,12 +117,13 @@ var core = {
 				
 				core.recog.afterClassify(() => {lazy.call(onError, err)});
 			} else if (res.images && res.images.length > 0) {
-				console.log(JSON.stringify(res, null, 2));
+				//console.log(JSON.stringify(res, null, 2));
 				var classifiers = res.images[0].classifiers || [];
 				if (classifiers.length > 0) {
 					if (core.recog.search(classifiers, 'default', 'person') > 0.5) {
-						if (core.recog.search(classifiers, 'id-*', 'friend') > 0.5) {
-							console.log("A friendly person identified.");
+						var score;
+						if ((score = core.recog.search(classifiers, 'id-*', 'friend')) > 0.45) {
+							console.log("A friendly person identified with score: "+score+".");
 							core.recog.afterClassify(() => {lazy.call(onFriend, err)});
 						} else {
 							console.log("An unrecognized person identified!");
